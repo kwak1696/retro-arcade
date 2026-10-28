@@ -21,9 +21,10 @@ window.addEventListener('keydown',e=>{if(!started||e.ctrlKey||e.metaKey||e.altKe
 window.addEventListener('keyup',e=>{const key=keymap[e.key]??(/^[0-9]$/.test(e.key)?e.key.charCodeAt(0):undefined);if(key===undefined)return;pressed.delete(key);input(key,false);document.querySelectorAll(`[data-key="${key}"]`).forEach(b=>b.classList.remove('pressed'));});
 window.addEventListener('blur',()=>{for(const key of pressed)input(key,false);pressed.clear();document.querySelectorAll('.pressed').forEach(b=>b.classList.remove('pressed'));});
 document.querySelectorAll('[data-key]').forEach(button=>{const key=Number(button.dataset.key);button.addEventListener('pointerdown',e=>{e.preventDefault();button.setPointerCapture(e.pointerId);input(key,true);button.classList.add('pressed');});for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,()=>{input(key,false);button.classList.remove('pressed');});});
-$('#rotate').addEventListener('click',()=>{rotation=(rotation+90)%360;$('#screen-shell').style.transform=`rotate(${rotation}deg)`;toast(`화면 ${rotation}° 회전`);});
+$('#rotate').addEventListener('click',()=>{rotation=(rotation+90)%360;$('#play-stage').dataset.rotated=String(rotation%180!==0);$('#screen-shell').style.transform=`rotate(${rotation}deg)`;toast(`화면 ${rotation}° 회전`);});
 $('#mute').addEventListener('click',()=>{const muted=!window.nomHost.muted;window.nomHost.setMute(muted);$('#mute').textContent=muted?'♩':'♪';$('#mute').setAttribute('aria-label',muted?'소리 켜기':'음소거');$('#mute').setAttribute('aria-pressed',String(muted));toast(muted?'소리를 껐습니다':'소리를 켰습니다');});
 $('#fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if($('#play-stage').requestFullscreen)await $('#play-stage').requestFullscreen();else toast('이 브라우저는 전체 화면을 지원하지 않습니다.');}catch{toast('전체 화면을 열 수 없습니다.');}});
 $('#restart').addEventListener('click',()=>location.reload());
 window.addEventListener('error',event=>{if(started)window.nomError('게임 실행 중 오류가 발생했습니다. 페이지를 다시 열어주세요.');console.error(event.error);});
 loadResources().catch(()=>{});
+
