@@ -23,7 +23,7 @@ export class LgtRuntime extends WipiRuntime {
   if(name==='java/lang/String')for(const [slot,method,sig] of [[22,'indexOf','(II)I'],[25,'indexOf','(Ljava/lang/String;)I'],[26,'indexOf','(Ljava/lang/String;I)I'],[27,'substring','(I)Ljava/lang/String;']]){cls.methods.set(method+sig,slot);this.w32(vtable+(slot+1)*4,this.member(name,method,sig));}
   if(name==='java/io/OutputStream'){cls.methods.set('flush()V',13);this.w32(vtable+56,this.member(name,'flush','()V'));}
   if(name==='java/io/DataOutputStream'){cls.methods.set('writeUTF(Ljava/lang/String;)V',24);this.w32(vtable+100,this.member(name,'writeUTF','(Ljava/lang/String;)V'));}
-  if(name==='java/io/DataInputStream')for(const [slot,method,sig] of [[22,'readBoolean','()Z'],[26,'readUnsignedShort','()I'],[27,'readChar','()C'],[29,'readLong','()J'],[33,'readUTF','()Ljava/lang/String;']]){cls.methods.set(method+sig,slot);this.w32(vtable+(slot+1)*4,this.member(name,method,sig));}
+  if(name==='java/io/DataInputStream')for(const [slot,method,sig] of [[22,'readBoolean','()Z'],[26,'readUnsignedShort','()I'],[27,'readChar','()C'],[29,'readLong','()J'],[32,'readUTF','()Ljava/lang/String;']]){cls.methods.set(method+sig,slot);this.w32(vtable+(slot+1)*4,this.member(name,method,sig));}
   if(!generated)for(const method of this.foreignDeclarations?.get(name)||[]){const key=method.name+method.sig;if(!cls.methods.has(key)){const slot=Math.max(this.seed.java_abi[name]?.vtable_size||10,...cls.methods.values())+1;cls.methods.set(key,slot);this.w32(vtable+(slot+1)*4,this.member(name,method.name,method.sig));}}
   if(generated)for(const method of generated.methods){if(method.name.startsWith('<'))continue;let slot=cls.methods.get(method.name+method.descriptor);if(slot===undefined&&method.name==='showNotify')slot=14;if(slot===undefined&&method.name==='run')slot=this.seed.java_abi['java/lang/Runnable']?.vtable?.find(m=>m.name==='run')?.index;if(slot!==undefined){cls.methods.set(method.name+method.descriptor,slot);this.w32(vtable+(slot+1)*4,Number(method.address));}}
   compilerTargets.forEach((target,i)=>{if(target)this.w32(vtable+(i+1)*4,target);});
@@ -77,7 +77,7 @@ export class LgtRuntime extends WipiRuntime {
     const name=String(value(a));if(method==='isFile'){if(!this.files.has(name)){try{const stored=this.storage?.getItem('nom3:file:'+name);if(stored)this.files.set(name,Uint8Array.from(JSON.parse(stored)));}catch{}}return +this.files.has(name);}if(method==='remove'){this.files.delete(name);try{this.storage?.removeItem('nom3:file:'+name);}catch{}return 0;}
    }
    if(className==='org/kwis/msp/io/File'){
-    const obj=this.objects.get(a);if(method==='<init>'){const name=String(value(b));if(!this.files.has(name))this.files.set(name,new Uint8Array());obj.file={name,pos:0};return 0;}
+    const obj=this.objects.get(a);if(method==='<init>'){const name=String(value(b));if(!this.files.has(name)){try{const stored=this.storage?.getItem('nom3:file:'+name);if(stored)this.files.set(name,Uint8Array.from(JSON.parse(stored)));}catch{}if(!this.files.has(name))this.files.set(name,new Uint8Array());}obj.file={name,pos:0};return 0;}
     const file=obj.file,data=this.files.get(file.name);if(method==='sizeOf')return data.length;if(method==='close'){try{this.storage?.setItem('nom3:file:'+file.name,JSON.stringify(Array.from(data)));}catch{}return 0;}
     if(method==='read'){const array=this.objects.get(b),chunk=data.subarray(file.pos,file.pos+d);this.write(array.data+c,chunk);file.pos+=chunk.length;return chunk.length||-1;}
     if(method==='write'){const array=this.objects.get(b),target=new Uint8Array(Math.max(data.length,file.pos+d));target.set(data);target.set(this.read(array.data+c,d),file.pos);this.files.set(file.name,target);file.pos+=d;return d;}
@@ -135,7 +135,21 @@ export class LgtRuntime extends WipiRuntime {
    if(method==='<init>'&&['org/kwis/msp/lcdui/Jlet','org/kwis/msp/lcdui/Card','java/lang/Object','java/io/InputStream','java/util/Random'].includes(className))return 0;
    if(className==='org/kwis/msp/lcdui/Display'&&method==='getDefaultDisplay')return this.display||(this.display=this.instantiate(this.makeClass(className)));
    if(className==='org/kwis/msp/lcdui/Display'&&method==='pushCard'){this.card=b;return 0;}
-   if(className==='java/util/Calendar'&&method==='getInstance')return this.calendar||(this.calendar=this.instantiate(this.makeClass(className)));
+   if(className==='java/util/Calendar'){
+    if(method==='getInstance'){const p=this.instantiate(this.makeClass(className));this.objects.get(p).date=new Date();return p;}
+    const calendar=this.objects.get(a);
+    if(method==='setTime'){calendar.date=new Date(this.objects.get(b).date.getTime());return 0;}
+    if(method==='get'){
+     const date=calendar.date,fields={1:date.getFullYear(),2:date.getMonth(),5:date.getDate(),7:date.getDay()+1,9:Math.floor(date.getHours()/12),10:date.getHours()%12,11:date.getHours(),12:date.getMinutes(),13:date.getSeconds(),14:date.getMilliseconds()};
+     if(Object.hasOwn(fields,b))return fields[b];
+     this.raiseJava('java/lang/IllegalArgumentException');
+    }
+   }
+   if(className==='java/util/Date'){
+    const date=this.objects.get(a);
+    if(method==='<init>'){date.date=sig==='()V'?new Date():new Date((b>>>0)+(c|0)*4294967296);return 0;}
+    if(method==='getTime'){const millis=date.date.getTime();this.r[1]=Math.floor(millis/4294967296);return millis;}
+   }
    if(className==='org/kwis/msp/handset/BackLight')return 0;
    if(className==='org/kwis/msp/lcdui/Card'&&method==='getWidth')return this.seed.width;
    if(className==='org/kwis/msp/lcdui/Card'&&method==='getHeight')return this.seed.height;
