@@ -61,7 +61,7 @@ window.addEventListener('blur',()=>{for(const key of pressed)input(key,false,tru
 // Fullscreen controls stay in letterbox space, outside the rotating display.
 const stage=$('#play-stage');
 const touchReleases=new Map();let numericControls=null,numericPanel=null,numericToggle=null;
-if(selectedGame==='nom2'){
+{
  numericControls=document.createElement('div');numericControls.className='numeric-controls';
  numericToggle=document.createElement('button');numericToggle.className='numeric-toggle';numericToggle.type='button';numericToggle.setAttribute('aria-label','숫자 키패드 열기');numericToggle.setAttribute('aria-expanded','false');numericToggle.setAttribute('aria-controls','numeric-keypad');numericToggle.title='숫자 키패드';
  numericToggle.innerHTML='<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><g fill="currentColor"><path d="M2 2h4v4H2zm6 0h4v4H8zm6 0h4v4h-4zM2 8h4v4H2zm6 0h4v4H8zm6 0h4v4h-4zM2 14h4v4H2zm6 0h4v4H8zm6 0h4v4h-4z"/></g></svg>';
