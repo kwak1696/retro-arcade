@@ -36,7 +36,7 @@ in the ignored `analysis/` directory, not required at runtime.
 
 ## Beta limits
 
-- Sound, vibration, carrier networking, billing, and handset program management
+- Vibration, carrier networking, billing, and handset program management
   are unavailable. Game code is not patched to bypass these services.
 - Some original game paths and all later stages have not been exhaustively tested.
 - NOM 3 has a bounded 32 MiB managed data heap; the MiniGame ports use an 8 MiB heap.
@@ -45,3 +45,10 @@ in the ignored `analysis/` directory, not required at runtime.
 
 The original games/assets remain the property of GAMEVIL/Com2uS. See
 `THIRD-PARTY-NOTICES.txt` for WIE ABI reference metadata and fflate MIT notices.
+
+## Audio restoration
+
+See [SOUND-RESTORATION.md](SOUND-RESTORATION.md) for the build-time SMAF renderer,
+mobile Web Audio activation, original PCM effects and MIDI score synthesis,
+licensing and the three MiniGame Paradise 1 resources still producing silence.
+Run `python tools/build_audio.py` and `node tools/test_game_audio.mjs` after preparing the game builds.

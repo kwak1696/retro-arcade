@@ -1,12 +1,12 @@
-import {WipiRuntime} from './wipi-runtime.mjs';
+import {WipiRuntime} from './wipi-runtime.mjs?v=20261029-audio1';
 async function unpack(url){const response=await fetch(url);if(!response.ok)throw Error('게임 파일을 불러올 수 없습니다.');return new Response(response.body.pipeThrough(new DecompressionStream('gzip')));}
 export async function startWipi(slug,canvas,onError){
  const [seed,code]=await Promise.all([unpack(`wipi-${slug}-seed.json.gz`).then(r=>r.json()),unpack(`wipi-${slug}-code.mjs.gz`).then(r=>r.text())]);
  const blob=URL.createObjectURL(new Blob([code],{type:'text/javascript'}));let install;
  try{({default:install}=await import(blob));}finally{URL.revokeObjectURL(blob);}
  const ctx=canvas.getContext('2d'),frame=ctx.createImageData(seed.width,seed.height);
- const Runtime=slug==='nom3'?(await import('./wipi-lgt-runtime.mjs?v=20261029-nom3-fix1')).LgtRuntime:WipiRuntime;
- const runtime=new Runtime(seed,{storage:localStorage,present:(fb,data)=>{
+ const Runtime=slug==='nom3'?(await import('./wipi-lgt-runtime.mjs?v=20261029-audio1')).LgtRuntime:WipiRuntime;
+ const runtime=new Runtime(seed,{storage:localStorage,audio:window.arcadeAudio,present:(fb,data)=>{
   const rgba=frame.data;
   for(let y=0;y<fb.h;y++)for(let x=0;x<fb.w;x++){const i=y*fb.stride+x*2,p=data[i]|data[i+1]<<8,j=(y*fb.w+x)*4;rgba[j]=((p>>>11)&31)*255/31;rgba[j+1]=((p>>>5)&63)*255/63;rgba[j+2]=(p&31)*255/31;rgba[j+3]=255;}
   ctx.putImageData(frame,0,0);window.nomHost.frames++;

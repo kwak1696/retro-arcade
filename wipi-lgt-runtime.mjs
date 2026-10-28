@@ -1,5 +1,5 @@
 /* LGT services for statically translated Java AOT game code. Beta compatibility. */
-import {WipiRuntime} from './wipi-runtime.mjs';
+import {WipiRuntime} from './wipi-runtime.mjs?v=20261029-audio1';
 import {decodePNG} from './wipi-png.mjs';
 import {RasterGraphics} from './wipi-raster.mjs';
 export class LgtRuntime extends WipiRuntime {
@@ -181,7 +181,20 @@ export class LgtRuntime extends WipiRuntime {
    if(className==='org/kwis/msp/handset/HandsetProperty'&&method==='getSystemProperty')return this.javaString(({PHONEMODEL:'Browser',BATTERYLEVEL:'100',RSSILEVEL:'30'})[this.objects.get(a)?.value]||'');
    if(className==='java/lang/String'&&method==='toCharArray'){const value=this.objects.get(a)?.value||'',p=this.array('[C',value.length),out=this.objects.get(p);for(let i=0;i<value.length;i++)this.w16(out.data+i*2,value.charCodeAt(i));return p;}
    if(className==='java/lang/String'&&method==='length')return this.objects.get(a)?.value?.length||0;
-   if(['org/kwis/msp/media/BaseClip','org/kwis/msp/media/Clip','org/kwis/msp/media/Player','org/kwis/msp/media/Volume','org/kwis/msp/media/Vibrator'].includes(className))return method==='putData'?d:method==='setBuffer'||method==='play'||method==='stop'||method==='setVolume'?1:0;
+   if(['org/kwis/msp/media/BaseClip','org/kwis/msp/media/Clip'].includes(className)){
+    const clip=this.objects.get(a);
+    if(method==='<init>'){clip.volume??=100;if(sig==='(Ljava/lang/String;[B)V'){const array=this.objects.get(c);clip.sound=this.audio?.create(this.read(array.data,array.length));}return 0;}
+    if(method==='setBuffer'||method==='putData'){const array=this.objects.get(b),offset=method==='putData'?c:0,length=method==='putData'?d:c;this.audio?.stop(clip.sound);clip.sound=this.audio?.create(this.read(array.data+offset,length));return method==='putData'?length:1;}
+    if(method==='setVolume'){clip.volume=b;this.audio?.setVolume(clip.sound,b);return 1;}
+    if(method==='clearData'){this.audio?.stop(clip.sound);clip.sound=null;return 0;}
+    if(method==='availableDataSize')return 1048576;
+   }
+   if(className==='org/kwis/msp/media/Player'){
+    const clip=this.objects.get(a);if(method==='play'){this.audio?.setVolume(clip?.sound,clip?.volume??100);this.audio?.play(clip?.sound,!!b);return 1;}
+    if(['stop','pause','resume'].includes(method)){this.audio?.[method](clip?.sound);return 1;}
+   }
+   if(className==='org/kwis/msp/media/Volume'){if(method==='set'){this.audio?.setMasterVolume(a);this.mediaVolume=a;}return method==='get'?(this.mediaVolume??100):0;}
+   if(className==='org/kwis/msp/media/Vibrator')return 0;
    if(className==='java/util/Random'&&method==='nextInt'){let n=this.randomState||123456789;n^=n<<13;n^=n>>>17;n^=n<<5;return this.randomState=n>>>0;}
    if(className==='java/lang/Math')return method==='min'?Math.min(a|0,b|0):method==='max'?Math.max(a|0,b|0):Math.abs(a|0);
    if(className==='java/lang/System'){

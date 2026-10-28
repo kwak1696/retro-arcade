@@ -1,5 +1,5 @@
 'use strict';
-const $=s=>document.querySelector(s);let started=false,rotation=0,loadPromise,codePromise;
+const $=s=>document.querySelector(s);let started=false,rotation=0,loadPromise,codePromise,audioPromise;
 const games={
  nom:{name:'NOM',version:'1.0.25',script:'nom.js',resources:'resources.json',width:176,height:208,label:'놈 · ORIGINAL JAVA EDITION'},
  nom3:{name:'NOM 3 · 놈 3',version:'1.0.1',wipi:true,width:240,height:320,label:'국내 WIPI판 · 베타'},
@@ -21,25 +21,27 @@ document.documentElement.style.setProperty('--game-fit-height',`${gameConfig.wid
 document.documentElement.style.setProperty('--game-fit-width',`${gameConfig.width/gameConfig.height*100}vw`);
 $('#game-name').textContent=gameConfig.name;$('.game-label>span').textContent=gameConfig.label;$('#overlay-name').firstChild.textContent=gameConfig.name;$('#screen-resolution').textContent=`${gameConfig.width} × ${gameConfig.height}`;$('#screen-version').textContent=gameConfig.name+' · '+gameConfig.version;
 document.title=gameConfig.name+' — Pocket Arcade';
+window.nomAudioError=message=>toast(message);
 window.nomError=message=>{document.querySelector('#status').textContent='● LOAD ERROR';toast(message);};
 function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('visible');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('visible'),4000);}
 function loadResources(){if(gameConfig.wipi)return Promise.resolve();return loadPromise??=fetch(gameConfig.resources).then(r=>{if(!r.ok)throw Error('리소스를 불러올 수 없습니다.');return r.json();}).then(data=>{window.nomHost.resources=data;window.nomHost.properties=data.__properties||{};});}
-function loadGameCode(){if(gameConfig.wipi)return codePromise??=import('./wipi-player.mjs?v=20261029-nom3-fix1');return codePromise??=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=gameConfig.script;script.onload=resolve;script.onerror=()=>reject(Error('게임 코드를 불러오지 못했습니다.'));document.head.append(script);});}
-async function start(){if(started)return;const button=$('#start');button.disabled=true;button.innerHTML='게임 불러오는 중… <span>↗</span>';$('#loading-copy').textContent='오리지널 게임을 준비하고 있습니다';$('#status').textContent='● LOADING';try{await Promise.all([loadResources(),loadGameCode()]);if(gameConfig.wipi){const player=await loadGameCode();await player.startWipi(selectedGame,$('#game'),error=>{console.error(error);window.nomError('게임 실행 오류: '+error.message);});}else if(typeof main!=='function')throw Error('게임 스크립트를 불러오지 못했습니다.');started=true;$('#start-overlay').classList.add('hidden');$('#game').focus({preventScroll:true});if(!gameConfig.wipi)main([],error=>{if(error){console.error(error);window.nomError('게임 실행 오류: '+(error.message||error));}});$('#status').textContent='● NOW PLAYING';$('#engine-indicator').textContent='JAVASCRIPT';}catch(error){started=false;button.disabled=false;button.innerHTML='다시 시작 ↗';$('#loading-copy').textContent=error.message;window.nomError(error.message);}}
+function loadGameCode(){if(gameConfig.wipi)return codePromise??=import('./wipi-player.mjs?v=20261029-audio1');return codePromise??=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=gameConfig.script;script.onload=resolve;script.onerror=()=>reject(Error('게임 코드를 불러오지 못했습니다.'));document.head.append(script);});}
+async function start(){if(started)return;window.arcadeAudio.unlock();const button=$('#start');button.disabled=true;button.innerHTML='게임 불러오는 중… <span>↗</span>';$('#loading-copy').textContent='오리지널 게임을 준비하고 있습니다';$('#status').textContent='● LOADING';try{await Promise.all([loadResources(),loadGameCode(),audioPromise??=window.arcadeAudio.prepare(selectedGame).catch(error=>{console.warn(error);toast('사운드 다운로드 실패. 새로고침 후 다시 시도해주세요.');})]);if(gameConfig.wipi){const player=await loadGameCode();await player.startWipi(selectedGame,$('#game'),error=>{console.error(error);window.nomError('게임 실행 오류: '+error.message);});}else if(typeof main!=='function')throw Error('게임 스크립트를 불러오지 못했습니다.');started=true;$('#start-overlay').classList.add('hidden');$('#game').focus({preventScroll:true});if(!gameConfig.wipi)main([],error=>{if(error){console.error(error);window.nomError('게임 실행 오류: '+(error.message||error));}});$('#status').textContent='● NOW PLAYING';$('#engine-indicator').textContent='JAVASCRIPT';}catch(error){started=false;button.disabled=false;button.innerHTML='다시 시작 ↗';$('#loading-copy').textContent=error.message;window.nomError(error.message);}}
 if(gameConfig.wipi){
  document.documentElement.dataset.wipi='true';
  $('#game').setAttribute('aria-label',gameConfig.name+' 게임 화면. 방향키로 이동, Enter 또는 Space로 확인');
  $('.overlay-overline').textContent='MINIGAME COLLECTION';
  $('.start-overlay p').textContent='짧게 즐기는 추억의 미니게임.';
- $('#loading-copy').textContent='베타 · 현재 사운드 미지원';
+ $('#loading-copy').textContent='베타 · BGM / 효과음 지원';
  $('.control-panel h2').textContent='추억의 미니게임을 다시.';
- $('.control-copy').textContent='방향키로 게임을 선택하고 OK로 시작하세요. 베타 버전으로 일부 기능과 사운드는 지원하지 않습니다.';
+ $('.control-copy').textContent='방향키로 게임을 선택하고 OK로 시작하세요. 베타 버전으로 일부 기능은 지원하지 않습니다.';
  $('.touch-caption').textContent='플레이 화면 터치 / 클릭으로도 확인';
  $('.action-key span').textContent='OK';$('.action-key b').textContent='5';
  $('.keyboard-hint').lastChild.textContent=' 확인 / 액션';
- $('#mute').disabled=true;$('#mute').title='이 게임은 현재 사운드를 지원하지 않습니다';
+ $('#mute').title='소리 켜기 / 끄기';
 }
-if(selectedGame==='nom3'){$('.overlay-overline').textContent='ONE-BUTTON RUNNER';$('.start-overlay p').textContent='돌리고, 뛰고, 다시 달리고.';$('.control-panel h2').textContent='돌리고, 뛰고, 다시 달리고.';$('.control-copy').textContent='장애물 앞에서 타이밍에 맞춰 점프하세요. 화면 터치 또는 OK로 확인하고 점프합니다. 베타 버전으로 현재 사운드는 지원하지 않습니다.';}
+if(selectedGame==='nom3'){$('.overlay-overline').textContent='ONE-BUTTON RUNNER';$('.start-overlay p').textContent='돌리고, 뛰고, 다시 달리고.';$('.control-panel h2').textContent='돌리고, 뛰고, 다시 달리고.';$('.control-copy').textContent='장애물 앞에서 타이밍에 맞춰 점프하세요. 화면 터치 또는 OK로 확인하고 점프합니다. 배경음악과 효과음을 지원합니다.';}
+if(selectedGame==='mini1')$('.control-copy').textContent+=' 일부 효과음은 복원 중입니다.';
 $('#start').addEventListener('click',start);
 function input(key,down,raw=false){if(!started){if(down)toast('게임 시작 버튼을 먼저 눌러주세요.');return;}const mapped=(gameConfig.wipi&&selectedGame!=='nom3')?(raw?key:({50:-1,56:-2,52:-3,54:-4}[key]??key)):(selectedGame==='nom2'||gameConfig.wipi)?({50:-1,56:-2,52:-3,54:-4,53:-5}[key]??key):key;window.nomHost.key?.(mapped,down);}
 const gameScreen=$('#game');let screenPointer=null;

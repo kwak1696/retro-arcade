@@ -45,3 +45,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Original games and their assets remain copyright their respective owners (GAMEVIL / Com2uS).
+
+
+Build-time Yamaha SMAF Player
+Copyright Andreas Wendorf (Akustikrausch), Apache License 2.0.
+https://github.com/akustikrausch/yamaha-smaf-player
+Upstream commit: 627f7ad8583ce34c5fec0269ef9778167af080d6
+License: SMAF-LICENSE.txt. Source: tools/vendor/smaf/ in the source archive.
+Local changes: explicit GM fallback for otherwise unsupported/silent voices.
+No Yamaha ROM or proprietary SDK is distributed.

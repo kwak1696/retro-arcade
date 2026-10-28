@@ -2,8 +2,8 @@
  * No ARM instruction decoder or interpreter is included here.
  */
 export class WipiRuntime {
- constructor(seed,{present=()=>{},storage=null}={}){
-  this.seed=seed;this.r=new Uint32Array(16);this.program=[];this.armProgram=[];this.thumb=true;this.n=0;this.z=0;this.c=0;this.v=0;
+ constructor(seed,{present=()=>{},storage=null,audio=null}={}){
+  this.seed=seed;this.audio=audio;this.clips=new Map();this.r=new Uint32Array(16);this.program=[];this.armProgram=[];this.thumb=true;this.n=0;this.z=0;this.c=0;this.v=0;
   const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
   this.codeBase=seed.image_base||0x100000;this.image=bytes(seed.image);this.heap=new Uint8Array(seed.heap_size||8*1024*1024);this.heap.set(bytes(seed.heap));this.stack=new Uint8Array(1024*1024);
   this.regions=[[this.codeBase,this.image],[0x4000000,this.heap],[0x7000000,this.stack],...(seed.segments||[]).map(s=>[s.base,bytes(s.data)])].map(([base,data])=>({base,data,view:new DataView(data.buffer,data.byteOffset,data.byteLength)}));
@@ -112,11 +112,16 @@ export class WipiRuntime {
    if(field==='seek'){if(c>2)return -1;const pos=[0,fd.pos,data.length][c]+(b|0);if(pos<0)return -1;return fd.pos=pos;}
   }
   if(table==='WIPICMediaInterface'){
-   if(field==='clip_create')return this.alloc(16);
-   if(field==='clip_put_data')return c;
-   if(['get_volume','clip_get_volume'].includes(field))return 5;
-   if(field==='clip_free'){this.free(a);return 0;}
-   if(['stop','pause','play','resume','clip_set_volume','vibrator'].includes(field))return 0;
+   if(field==='clip_create'){const p=this.alloc(16);this.clips.set(p,{volume:100});return p;}
+   const clip=this.clips.get(a);
+   if(field==='clip_put_data'){if(!clip)return -1;this.audio?.stop(clip.sound);clip.sound=this.audio?.create(this.read(b,c));return c;}
+   if(field==='get_volume')return 5;
+   if(field==='clip_get_volume')return clip?.volume??100;
+   if(field==='clip_free'){this.audio?.stop(clip?.sound);this.clips.delete(a);this.free(a);return 0;}
+   if(field==='play'){this.audio?.setVolume(clip?.sound,clip?.volume??100);this.audio?.play(clip?.sound,b!==0);return 0;}
+   if(field==='stop'||field==='pause'||field==='resume'){this.audio?.[field](clip?.sound);return 0;}
+   if(field==='clip_set_volume'){if(clip){clip.volume=b;this.audio?.setVolume(clip.sound,b);}return 0;}
+   if(field==='vibrator')return 0;
   }
   if(table==='misc_interface'&&field==='unknown_0')return 0;
   throw Error('WIPI service not implemented: '+name);
