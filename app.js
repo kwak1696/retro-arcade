@@ -1,11 +1,24 @@
 'use strict';
-const $=s=>document.querySelector(s);let started=false,rotation=0,loadPromise;
+const $=s=>document.querySelector(s);let started=false,rotation=0,loadPromise,codePromise;
+const selectedGame=new URLSearchParams(location.search).get('game')==='nom2'?'nom2':'nom';
+const gameConfig=selectedGame==='nom2'?{name:'NOM 2',version:'1.0.42',script:'nom2.js',resources:'resources-nom2.json',width:320,height:240}:{name:'NOM',version:'1.0.25',script:'nom.js',resources:'resources.json',width:176,height:208};
+document.documentElement.dataset.game=selectedGame;
+window.nomHost.storagePrefix=selectedGame==='nom2'?'nom2-native:':'nom-native:';
+$('#game-select').value=selectedGame;
+$('#game-select').addEventListener('change',event=>{const url=new URL(location.href);url.searchParams.set('game',event.target.value);location.assign(url.href);});
+$('#game').width=gameConfig.width;$('#game').height=gameConfig.height;
+document.documentElement.style.setProperty('--game-ratio',`${gameConfig.width} / ${gameConfig.height}`);
+document.documentElement.style.setProperty('--game-fit-height',`${gameConfig.width/gameConfig.height*100}dvh`);
+document.documentElement.style.setProperty('--game-fit-width',`${gameConfig.width/gameConfig.height*100}vw`);
+$('#game-name').textContent=gameConfig.name;$('.game-label>span').textContent=selectedGame==='nom2'?'놈투 · FREE RUNNER':'놈 · ORIGINAL JAVA EDITION';$('.archive-tag').textContent=selectedGame==='nom2'?'GAMEVIL / NOM 2':'GAMEVIL / 2003';$('#overlay-name').firstChild.textContent=gameConfig.name;$('#game-version').textContent=gameConfig.version+' · 해외판';$('#screen-resolution').textContent=`${gameConfig.width} × ${gameConfig.height}`;$('#screen-version').textContent=gameConfig.name+' · '+gameConfig.version;
+document.title=gameConfig.name+' — Pocket Arcade';
 window.nomError=message=>{document.querySelector('#status').textContent='● LOAD ERROR';toast(message);};
 function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('visible');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('visible'),4000);}
-function loadResources(){return loadPromise??=fetch('resources.json').then(r=>{if(!r.ok)throw Error('리소스를 불러올 수 없습니다.');return r.json();}).then(data=>window.nomHost.resources=data);}
-async function start(){if(started)return;const button=$('#start');button.disabled=true;button.innerHTML='게임 불러오는 중… <span>↗</span>';$('#loading-copy').textContent='오리지널 게임을 준비하고 있습니다';$('#status').textContent='● LOADING';try{await loadResources();if(typeof main!=='function')throw Error('게임 스크립트를 불러오지 못했습니다.');started=true;$('#start-overlay').classList.add('hidden');$('#game').focus({preventScroll:true});main([],error=>{if(error){console.error(error);window.nomError('게임 실행 오류: '+(error.message||error));}});$('#status').textContent='● NOW PLAYING';$('#engine-indicator').textContent='JAVASCRIPT';}catch(error){started=false;button.disabled=false;button.innerHTML='다시 시작 ↗';$('#loading-copy').textContent=error.message;window.nomError(error.message);}}
+function loadResources(){return loadPromise??=fetch(gameConfig.resources).then(r=>{if(!r.ok)throw Error('리소스를 불러올 수 없습니다.');return r.json();}).then(data=>{window.nomHost.resources=data;window.nomHost.properties=data.__properties||{};});}
+function loadGameCode(){return codePromise??=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=gameConfig.script;script.onload=resolve;script.onerror=()=>reject(Error('게임 코드를 불러오지 못했습니다.'));document.head.append(script);});}
+async function start(){if(started)return;const button=$('#start');button.disabled=true;button.innerHTML='게임 불러오는 중… <span>↗</span>';$('#loading-copy').textContent='오리지널 게임을 준비하고 있습니다';$('#status').textContent='● LOADING';try{await Promise.all([loadResources(),loadGameCode()]);if(typeof main!=='function')throw Error('게임 스크립트를 불러오지 못했습니다.');started=true;$('#start-overlay').classList.add('hidden');$('#game').focus({preventScroll:true});main([],error=>{if(error){console.error(error);window.nomError('게임 실행 오류: '+(error.message||error));}});$('#status').textContent='● NOW PLAYING';$('#engine-indicator').textContent='JAVASCRIPT';}catch(error){started=false;button.disabled=false;button.innerHTML='다시 시작 ↗';$('#loading-copy').textContent=error.message;window.nomError(error.message);}}
 $('#start').addEventListener('click',start);
-function input(key,down){if(!started){if(down)toast('게임 시작 버튼을 먼저 눌러주세요.');return;}window.nomHost.key?.(key,down);}
+function input(key,down){if(!started){if(down)toast('게임 시작 버튼을 먼저 눌러주세요.');return;}const mapped=selectedGame==='nom2'?({50:-1,56:-2,52:-3,54:-4,53:-5}[key]??key):key;window.nomHost.key?.(mapped,down);}
 const gameScreen=$('#game');let screenPointer=null;
 function releaseScreenPointer(){if(screenPointer===null)return;screenPointer=null;input(53,false);}
 gameScreen.addEventListener('pointerdown',event=>{
