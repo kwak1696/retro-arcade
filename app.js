@@ -43,7 +43,7 @@ if(gameConfig.wipi){
 if(selectedGame==='nom3'){$('.overlay-overline').textContent='ONE-BUTTON RUNNER';$('.start-overlay p').textContent='돌리고, 뛰고, 다시 달리고.';$('.control-panel h2').textContent='돌리고, 뛰고, 다시 달리고.';$('.control-copy').textContent='장애물 앞에서 타이밍에 맞춰 점프하세요. 화면 터치 또는 OK로 확인하고 점프합니다. 배경음악과 효과음을 지원합니다.';}
 if(selectedGame==='mini1')$('.control-copy').textContent+=' 일부 효과음은 복원 중입니다.';
 $('#start').addEventListener('click',start);
-function input(key,down,raw=false){if(!started){if(down)toast('게임 시작 버튼을 먼저 눌러주세요.');return;}const mapped=(gameConfig.wipi&&selectedGame!=='nom3')?(raw?key:({50:-1,56:-2,52:-3,54:-4}[key]??key)):(selectedGame==='nom2'||gameConfig.wipi)?({50:-1,56:-2,52:-3,54:-4,53:-5}[key]??key):key;window.nomHost.key?.(mapped,down);}
+function input(key,down,raw=false,literal=false){if(!started){if(down)toast('게임 시작 버튼을 먼저 눌러주세요.');return;}const mapped=literal?key:(gameConfig.wipi&&selectedGame!=='nom3')?(raw?key:({50:-1,56:-2,52:-3,54:-4}[key]??key)):(selectedGame==='nom2'||gameConfig.wipi)?({50:-1,56:-2,52:-3,54:-4,53:-5}[key]??key):key;window.nomHost.key?.(mapped,down);}
 const gameScreen=$('#game');let screenPointer=null;
 function releaseScreenPointer(){if(screenPointer===null)return;screenPointer=null;input(53,false);}
 gameScreen.addEventListener('pointerdown',event=>{
@@ -60,10 +60,22 @@ window.addEventListener('keyup',e=>{const key=keymap[e.key]??(/^[0-9]$/.test(e.k
 window.addEventListener('blur',()=>{for(const key of pressed)input(key,false,true);pressed.clear();document.querySelectorAll('.pressed').forEach(b=>b.classList.remove('pressed'));});
 // Fullscreen controls stay in letterbox space, outside the rotating display.
 const stage=$('#play-stage');
+const touchReleases=new Map();let numericControls=null,numericPanel=null,numericToggle=null;
+if(selectedGame==='nom2'){
+ numericControls=document.createElement('div');numericControls.className='numeric-controls';
+ numericToggle=document.createElement('button');numericToggle.className='numeric-toggle';numericToggle.type='button';numericToggle.setAttribute('aria-label','숫자 키패드 열기');numericToggle.setAttribute('aria-expanded','false');numericToggle.setAttribute('aria-controls','numeric-keypad');numericToggle.title='숫자 키패드';
+ numericToggle.innerHTML='<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><g fill="currentColor"><path d="M2 2h4v4H2zm6 0h4v4H8zm6 0h4v4h-4zM2 8h4v4H2zm6 0h4v4H8zm6 0h4v4h-4zM2 14h4v4H2zm6 0h4v4H8zm6 0h4v4h-4z"/></g></svg>';
+ numericPanel=document.createElement('div');numericPanel.id='numeric-keypad';numericPanel.className='numeric-keypad hidden';numericPanel.setAttribute('role','group');numericPanel.setAttribute('aria-label','숫자 키패드');
+ for(const digit of '123456789*0#'){const button=document.createElement('button');button.type='button';button.textContent=digit;button.dataset.key=String(digit.charCodeAt(0));button.dataset.literal='true';button.setAttribute('aria-label',digit==='*'?'별표':digit==='#'?'우물정':'숫자 '+digit);numericPanel.append(button);}
+ numericControls.append(numericToggle,numericPanel);stage.append(numericControls);
+ numericToggle.addEventListener('click',()=>{releaseScreenPointer();releaseTouchButtons(numericPanel);const open=numericPanel.classList.toggle('hidden')===false;numericToggle.setAttribute('aria-expanded',String(open));numericToggle.setAttribute('aria-label',open?'숫자 키패드 닫기':'숫자 키패드 열기');});
+ for(const event of ['keydown','keyup'])numericToggle.addEventListener(event,e=>{if(e.key==='Enter'||e.key===' ')e.stopPropagation();});
+}
+function layoutNumericControls(){if(!numericControls)return;const outer=stage.getBoundingClientRect(),screen=gameScreen.getBoundingClientRect(),width=Math.min(220,outer.width-16);numericControls.style.width=width+'px';numericControls.style.left=Math.max(8,Math.min(outer.width-width-8,screen.right-outer.left-width-8))+'px';numericControls.style.top=Math.max(8,Math.min(outer.height-266,screen.top-outer.top+8))+'px';}
 const fullscreenPad=document.createElement('div');fullscreenPad.className='fullscreen-pad hidden';fullscreenPad.setAttribute('aria-label','전체 화면 방향키');
 fullscreenPad.innerHTML='<div class="dpad"><button data-key="50" class="up" aria-label="위">↑</button><button data-key="52" class="left" aria-label="왼쪽">←</button><span class="dpad-center" aria-hidden="true">✦</span><button data-key="54" class="right" aria-label="오른쪽">→</button><button data-key="56" class="down" aria-label="아래">↓</button></div>';
 const fullscreenOK=document.createElement('button');fullscreenOK.className='fullscreen-ok hidden';fullscreenOK.dataset.key=gameConfig.wipi?'-5':'53';fullscreenOK.textContent='OK';fullscreenOK.setAttribute('aria-label','확인 / 점프');stage.append(fullscreenPad,fullscreenOK);
-function releaseTouchButtons(){document.querySelectorAll('[data-key].pressed').forEach(button=>{input(Number(button.dataset.key),false);button.classList.remove('pressed');});}
+function releaseTouchButtons(scope=document){for(const [button,release] of touchReleases)if(scope.contains(button))release();}
 function letterboxControls(width,height,screen){
  const gap=16,pad=156,ok=64;
  const {left,right,top,bottom}=screen;
@@ -76,6 +88,7 @@ function letterboxControls(width,height,screen){
  return [[x,y],[x+pad+gap,y+(pad-ok)/2]];
 }
 function layoutFullscreenControls(){
+ layoutNumericControls();
  releaseTouchButtons();fullscreenPad.classList.add('hidden');fullscreenOK.classList.add('hidden');
  if(document.fullscreenElement!==stage)return;
  const outer=stage.getBoundingClientRect(),screen=gameScreen.getBoundingClientRect();
@@ -87,10 +100,18 @@ function layoutFullscreenControls(){
 document.addEventListener('fullscreenchange',layoutFullscreenControls);
 new ResizeObserver(layoutFullscreenControls).observe(stage);
 new ResizeObserver(layoutFullscreenControls).observe(gameScreen);
-window.addEventListener('blur',releaseTouchButtons);
+window.addEventListener('blur',()=>releaseTouchButtons());
 if(gameConfig.wipi&&selectedGame!=='nom3'){const ok=document.createElement('button');ok.dataset.key='-5';ok.textContent='확인 / OK';$('.soft-keys').append(ok);$('.action-key span').textContent='ACTION';}
-document.querySelectorAll('[data-key]').forEach(button=>{const key=Number(button.dataset.key);let pointer=null;button.addEventListener('pointerdown',e=>{if(e.button!==0||pointer!==null)return;e.preventDefault();pointer=e.pointerId;button.setPointerCapture(e.pointerId);input(key,true);button.classList.add('pressed');});for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,e=>{if(e.pointerId!==pointer)return;pointer=null;input(key,false);button.classList.remove('pressed');});});
+document.querySelectorAll('[data-key]').forEach(button=>{
+ const key=Number(button.dataset.key),literal=button.dataset.literal==='true';let pointer=null,keyboard=false;
+ const send=down=>input(key,down,false,literal);
+ const release=()=>{if(pointer===null&&!keyboard)return;const id=pointer;pointer=null;keyboard=false;send(false);button.classList.remove('pressed');if(id!==null&&button.hasPointerCapture(id))button.releasePointerCapture(id);};touchReleases.set(button,release);
+ button.addEventListener('pointerdown',e=>{if(e.button!==0||pointer!==null)return;e.preventDefault();pointer=e.pointerId;button.setPointerCapture(e.pointerId);send(true);button.classList.add('pressed');});
+ for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,e=>{if(e.pointerId===pointer)release();});
+ if(literal){button.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;e.preventDefault();e.stopPropagation();if(!keyboard){keyboard=true;send(true);button.classList.add('pressed');}});button.addEventListener('keyup',e=>{if(e.key!=='Enter'&&e.key!==' ')return;e.preventDefault();e.stopPropagation();release();});button.addEventListener('blur',release);}
+});
 $('#rotate').addEventListener('click',()=>{rotation=(rotation+90)%360;$('#play-stage').dataset.rotated=String(rotation%180!==0);$('#screen-shell').style.transform=`rotate(${rotation}deg)`;requestAnimationFrame(layoutFullscreenControls);toast(`화면 ${rotation}° 회전`);});
+$('#screen-shell').addEventListener('transitionend',event=>{if(event.propertyName==='transform')layoutFullscreenControls();});
 $('#mute').addEventListener('click',()=>{const muted=!window.nomHost.muted;window.nomHost.setMute(muted);$('#mute').textContent=muted?'♩':'♪';$('#mute').setAttribute('aria-label',muted?'소리 켜기':'음소거');$('#mute').setAttribute('aria-pressed',String(muted));toast(muted?'소리를 껐습니다':'소리를 켰습니다');});
 $('#fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if($('#play-stage').requestFullscreen)await $('#play-stage').requestFullscreen();else toast('이 브라우저는 전체 화면을 지원하지 않습니다.');}catch{toast('전체 화면을 열 수 없습니다.');}});
 $('#restart').addEventListener('click',()=>location.reload());

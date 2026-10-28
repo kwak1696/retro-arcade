@@ -13,7 +13,8 @@
 
 Choose a game and press Start. Touch/click the display or press Enter/Space for
 OK/action; arrow keys navigate. In fullscreen, controls use spare letterbox space
-when there is enough room for touch targets. Progress is stored in this browser.
+when there is enough room for touch targets. Progress is stored in this browser. NOM 2 has a top-right keypad icon for a
+translucent numeric overlay (1–9, *, 0, #), including the original 1/3 inputs.
 
 The four WIPI titles are translated to JavaScript before publishing. No JVM, ARM
 instruction interpreter, or Wasm runtime is downloaded. WIPI sound is rendered from the original scores/samples before deployment; FM
