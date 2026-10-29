@@ -43,7 +43,8 @@ if(gameConfig.wipi){
 if(selectedGame==='nom3'){$('.overlay-overline').textContent='ONE-BUTTON RUNNER';$('.start-overlay p').textContent='돌리고, 뛰고, 다시 달리고.';$('.control-panel h2').textContent='돌리고, 뛰고, 다시 달리고.';$('.control-copy').textContent='장애물 앞에서 타이밍에 맞춰 점프하세요. 화면 터치 또는 OK로 확인하고 점프합니다. 배경음악과 효과음을 지원합니다.';}
 if(selectedGame==='mini1')$('.control-copy').textContent+=' 일부 효과음은 복원 중입니다.';
 $('#start').addEventListener('click',start);
-function input(key,down,raw=false,literal=false){if(!started){if(down)toast('게임 시작 버튼을 먼저 눌러주세요.');return;}const mapped=literal?key:(gameConfig.wipi&&selectedGame!=='nom3')?(raw?key:({50:-1,56:-2,52:-3,54:-4}[key]??key)):(selectedGame==='nom2'||gameConfig.wipi)?({50:-1,56:-2,52:-3,54:-4,53:-5}[key]??key):key;window.nomHost.key?.(mapped,down);}
+function input(key,down,raw=false,literal=false){if(!started){if(down)toast('게임 시작 버튼을 먼저 눌러주세요.');return;}// NOM 2's handset build uses R/T/Y/F/G/H/V/B/N for numeric 1–9.
+const numeric=selectedGame==='nom2'&&literal?({49:114,50:116,51:121,52:102,53:103,54:104,55:118,56:98,57:110}[key]??key):key;const mapped=literal?numeric:(gameConfig.wipi&&selectedGame!=='nom3')?(raw?key:({50:-1,56:-2,52:-3,54:-4}[key]??key)):(selectedGame==='nom2'||gameConfig.wipi)?({50:-1,56:-2,52:-3,54:-4,53:-5}[key]??key):key;window.nomHost.key?.(mapped,down);}
 const gameScreen=$('#game');let screenPointer=null;
 function releaseScreenPointer(){if(screenPointer===null)return;screenPointer=null;input(53,false);}
 gameScreen.addEventListener('pointerdown',event=>{
@@ -54,10 +55,10 @@ gameScreen.addEventListener('pointerdown',event=>{
 });
 for(const event of ['pointerup','pointercancel','lostpointercapture'])gameScreen.addEventListener(event,e=>{if(e.pointerId===screenPointer)releaseScreenPointer();});
 window.addEventListener('blur',releaseScreenPointer);
-const keymap=(gameConfig.wipi&&selectedGame!=='nom3')?{ArrowUp:-1,ArrowDown:-2,ArrowLeft:-3,ArrowRight:-4,Enter:-5,' ':53,Escape:-7,F1:-6,F2:-7}:{ArrowUp:50,ArrowDown:56,ArrowLeft:52,ArrowRight:54,Enter:53,' ':53,Escape:-7,F1:-6,F2:-7};const pressed=new Set();
-window.addEventListener('keydown',e=>{if(!started||e.ctrlKey||e.metaKey||e.altKey)return;const key=keymap[e.key]??(/^[0-9]$/.test(e.key)?e.key.charCodeAt(0):e.key==='*'?42:e.key==='#'?35:undefined);if(key===undefined)return;e.preventDefault();if(pressed.has(key))return;pressed.add(key);input(key,true,true);document.querySelectorAll(`[data-key="${key}"]`).forEach(b=>b.classList.add('pressed'));});
-window.addEventListener('keyup',e=>{const key=keymap[e.key]??(/^[0-9]$/.test(e.key)?e.key.charCodeAt(0):undefined);if(key===undefined)return;pressed.delete(key);input(key,false,true);document.querySelectorAll(`[data-key="${key}"]`).forEach(b=>b.classList.remove('pressed'));});
-window.addEventListener('blur',()=>{for(const key of pressed)input(key,false,true);pressed.clear();document.querySelectorAll('.pressed').forEach(b=>b.classList.remove('pressed'));});
+const keymap=(gameConfig.wipi&&selectedGame!=='nom3')?{ArrowUp:-1,ArrowDown:-2,ArrowLeft:-3,ArrowRight:-4,Enter:-5,' ':53,Escape:-7,F1:-6,F2:-7}:{ArrowUp:50,ArrowDown:56,ArrowLeft:52,ArrowRight:54,Enter:53,' ':53,Escape:-7,F1:-6,F2:-7};const pressed=new Map();
+window.addEventListener('keydown',e=>{if(!started||e.ctrlKey||e.metaKey||e.altKey)return;const key=keymap[e.key]??(/^[0-9]$/.test(e.key)?e.key.charCodeAt(0):e.key==='*'?42:e.key==='#'?35:undefined);if(key===undefined)return;e.preventDefault();if(pressed.has(e.code||e.key))return;pressed.set(e.code||e.key,{key,literal:/^[0-9*#]$/.test(e.key)});input(key,true,true,/^[0-9*#]$/.test(e.key));document.querySelectorAll(`[data-key="${key}"]`).forEach(b=>b.classList.add('pressed'));});
+window.addEventListener('keyup',e=>{const key=keymap[e.key]??(/^[0-9]$/.test(e.key)?e.key.charCodeAt(0):e.key==='*'?42:e.key==='#'?35:undefined);if(key===undefined)return;pressed.delete(e.code||e.key);input(key,false,true,/^[0-9*#]$/.test(e.key));document.querySelectorAll(`[data-key="${key}"]`).forEach(b=>b.classList.remove('pressed'));});
+window.addEventListener('blur',()=>{for(const {key,literal} of pressed.values())input(key,false,true,literal);pressed.clear();document.querySelectorAll('.pressed').forEach(b=>b.classList.remove('pressed'));});
 // Fullscreen controls stay in letterbox space, outside the rotating display.
 const stage=$('#play-stage');
 const touchReleases=new Map();let numericControls=null,numericPanel=null,numericToggle=null;
